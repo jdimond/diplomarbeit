@@ -1,0 +1,259 @@
+Name:                diplomarbeit
+Version:             0.1
+License:             BSD3
+License-file:        LICENSE
+Author:              Jonathan Dimond
+Maintainer:          mail@dimond.de
+Build-Type:          Simple
+Cabal-Version:       >=1.10
+Description:         Diplomarbeit of Jonathan Dimond
+
+Library
+    Build-Depends:    base == 4.*,
+                      containers >= 0.4,
+                      unordered-containers >= 0.2.3,
+                      text >= 0.11,
+                      bytestring >= 0.10.0.2,
+                      binary >= 0.7,
+                      vector >= 0.10,
+                      filepath >= 1.3,
+                      primitive >= 0.5,
+                      QuickCheck >= 2.6,
+                      stm >= 2.4.2,
+                      tagsoup >= 0.12.8,
+                      zlib >= 0.5.4,
+                      mmap >= 0.5.8,
+                      deepseq >= 1.3,
+                      hashable >= 1.2.0.7,
+                      criterion >= 0.8,
+                      vector-algorithms >= 0.5.4.2
+    Default-Language: Haskell2010
+    Exposed-Modules:  Search.Common,
+                      Search.Dictionary,
+                      Search.Processing,
+                      Search.Processing.GOV2,
+                      Search.Stats,
+                      Search.Collection,
+                      Search.Collection.Writer,
+                      Search.Cluster,
+                      Search.SearchIndex,
+                      Control.Concurrent.ThreadPool,
+                      Control.Concurrent.STM.TCBQueue,
+                      Search.Foreign.FFIInterface,
+                      Search.Foreign.ClusterLookupFFI,
+                      Search.IndexedSet,
+                      Search.Intersect.Lookup
+    Other-Modules:    Search.Collection.Internal,
+                      Search.Foreign.LookupFFI
+    include-dirs:     lib/Search/Foreign/
+    hs-source-dirs:   lib
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+    C-Sources:        lib/Search/Foreign/utils.c,
+                      lib/Search/Foreign/search.c
+                      lib/Search/Foreign/fmf.c,
+                      lib/Search/Foreign/clusterlookup.c,
+                      lib/Search/Foreign/lookup.c
+    CC-Options:        -Wall -O3 -ggdb -D_GNU_SOURCE -fopenmp
+
+Executable Tokenize
+    main-is:          Tokenize.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      bytestring >= 0.10.0.2,
+                      filemanip >= 0.3.6.2,
+                      filepath >= 1.3,
+                      directory >= 1.2.0.1,
+                      binary >= 0.7,
+                      stm >= 2.4.2,
+                      text >= 0.11,
+                      async >= 2.0,
+                      cmdargs >= 0.10.3,
+                      zlib >= 0.5.4
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable BuildIndex
+    main-is:          BuildIndex.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      bytestring >= 0.10.0.2,
+                      filepath >= 1.3,
+                      binary >= 0.7,
+                      cmdargs >= 0.10.3,
+                      directory >= 1.2.0
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+
+Executable LookupComplexity
+    main-is:          LookupComplexity.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      bytestring >= 0.10.0.2,
+                      filepath >= 1.3,
+                      binary >= 0.7,
+                      filemanip >= 0.3.6.2,
+                      directory >= 1.2.0.1,
+                      text >= 0.11.2,
+                      cmdargs >= 0.10.3,
+                      vector >= 0.10,
+                      random >= 1.0.1,
+                      containers >= 0.5.2,
+                      deepseq >= 1.3
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable Benchmark
+    main-is:          Benchmark.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      filepath >= 1.3,
+                      binary >= 0.7,
+                      directory >= 1.2.0.1,
+                      text >= 0.11.2,
+                      cmdargs >= 0.10.3,
+                      vector >= 0.10,
+                      random >= 1.0.1,
+                      unordered-containers >= 0.2.3,
+                      deepseq >= 1.3
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable Search
+    main-is:          Search.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      bytestring >= 0.10.0.2,
+                      filepath >= 1.3,
+                      text >= 0.11,
+                      editline >= 0.2.1,
+                      binary >= 0.7,
+                      vector >= 0.10,
+                      cmdargs >= 0.10.3,
+                      zlib >= 0.5.4
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable Stats
+    main-is:          Stats.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      vector >= 0.10,
+                      cmdargs >= 0.10.3
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable QueryFilter
+    main-is:          QueryFilter.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      bytestring >= 0.10.0.2,
+                      filepath >= 1.3,
+                      text >= 0.11,
+                      binary >= 0.7,
+                      vector >= 0.10,
+                      directory >= 1.2.0.1,
+                      cmdargs >= 0.10.3
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable ClusterSizes
+    main-is:          ClusterSizes.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      filepath >= 1.3,
+                      binary >= 0.7,
+                      cmdargs >= 0.10.3,
+                      vector >= 0.10,
+                      binary >= 0.7,
+                      text >= 0.11,
+                      bytestring >= 0.10.0.2
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Executable Cluster
+    main-is:          Cluster.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      diplomarbeit,
+                      bytestring >= 0.10.0.2,
+                      text >= 0.11,
+                      binary >= 0.7,
+                      vector >= 0.10,
+                      cmdargs >= 0.10.3,
+                      mwc-random >= 0.12,
+                      containers >= 0.5,
+                      primitive >= 0.5,
+                      criterion >= 0.8
+    hs-source-dirs:   tools
+    GHC-Options:      -Wall -threaded -O3
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+    ld-options:       -fopenmp
+
+Test-Suite Dictionary
+    type:             exitcode-stdio-1.0
+    main-is:          TestDictionary.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      HTF >= 0.10,
+                      diplomarbeit,
+                      text >= 0.11,
+                      binary >= 0.7
+    hs-source-dirs:   test
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Test-Suite IndexedSet
+    type:             exitcode-stdio-1.0
+    main-is:          TestIndexedSet.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      HTF >= 0.10,
+                      diplomarbeit,
+                      binary >= 0.7,
+                      QuickCheck >= 2.6,
+                      vector >= 0.10,
+                      deepseq >= 1.3,
+                      directory >= 1.2.0.1
+    hs-source-dirs:   test
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all
+
+Test-Suite Lookup
+    type:             exitcode-stdio-1.0
+    main-is:          TestLookup.hs
+    Default-Language: Haskell2010
+    build-depends:    base,
+                      HTF >= 0.10,
+                      diplomarbeit,
+                      vector >= 0.10
+    hs-source-dirs:   test
+    GHC-Options:      -rtsopts
+    GHC-Prof-Options: -auto-all -caf-all

@@ -1,0 +1,2 @@
+To profile configure with:
+cabal configure --enable-tests --enable-benchmarks --ghc-options=-prof

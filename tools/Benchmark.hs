@@ -69,6 +69,7 @@ data BenchArgs = BenchArgs
     , randomQueries :: Maybe Int
     , numRuns :: Int
     , expandQueries :: Bool
+    , useLogComp :: Bool
     } deriving (Eq, Show, A.Data, A.Typeable)
 
 benchArgs :: BenchArgs
@@ -79,6 +80,7 @@ benchArgs = BenchArgs
     , randomQueries = Nothing &= A.typ "NUM" &= A.help "use n randomly generated queries"
     , numRuns = 1 &= A.help "number of iterations for benchmark (default=1)"
     , expandQueries = False &= A.explicit &= A.name "expand-queries" &= A.help "expand n term queries into multiple 2-term queries"
+    , useLogComp = False &= A.explicit &= A.name "use-log-complexity" &= A.help "use O(m*log(n/m)) as complexity function"
     }
 
 putInfo :: String -> IO ()
@@ -126,15 +128,31 @@ loadPostingLists fp tokens useDocId f e =
                           let !filtered = VU.filter useDocId l
                           f t a filtered
 
-lookupComplexity :: ComplexityMap -> (Token, Token) -> (Int, Int)
-lookupComplexity m (t1,t2) =
+type CompFunc = Int -> Int -> Int
+
+logComp :: Int -> Int -> Int -> Int
+logComp maxVal =
+    let logs = VU.generate (maxVal+1) (log . fromIntegral . (1+))
+        prefixSums = VU.scanl' (+) 0 logs
+    in logComp' prefixSums
+
+logComp' :: VU.Vector Double -> Int -> Int -> Int
+logComp' ps x y = floor $ logfac (x + y) - logfac y - logfac x
+    where logfac! x = if x >= VU.length ps || x < 0
+                         then error $ "Value " ++ (show x) ++ " out of precalculated range"
+                         else ps `VU.unsafeIndex` x
+
+lookupComplexity :: CompFunc -> ComplexityMap -> (Token, Token) -> (Int, Int)
+lookupComplexity compFunc m (t1,t2) =
     case (HM.lookup t1 m, HM.lookup t2 m) of
       (Just l1, Just l2) ->
-         let !intersectComplexity = VU.sum $ VU.map fromIntegral $ VU.zipWith min l1 l2
-             !clusterComplexity = VU.sum $ VU.map fromIntegral $ VU.zipWith boolmin l1 l2
+         let l1' = VU.map fromIntegral l1
+             l2' = VU.map fromIntegral l2
+             !intersectComplexity = VU.sum $ VU.map fromIntegral $ VU.zipWith compFunc l1' l2'
+             !clusterComplexity = compFunc (nonemptySize l1) (nonemptySize l2)
          in force $ (intersectComplexity, clusterComplexity)
       _ -> error $ "Term " ++ show t1 ++ " and " ++ show t2 ++ " not loaded"
-    where boolmin a b = min 1 (min a b)
+    where nonemptySize = VU.length . VU.filter (> 0)
 
 benchQueryLookup :: LookupMap -> (Token, Token) -> IO (Double, VU.Vector DocId)
 benchQueryLookup m (t1,t2) =
@@ -195,8 +213,12 @@ runClusterBenchmark runs load ts cl qs =
            do times <- benchClusterLookup ii qs
               return $ genResultDouble ("cluster-"++ show i) times
 
-runSizesBenchmark :: LoadFunction PostingListMap -> Cl.Clustering DocId -> VU.Vector (Token, Token) -> IO [BenchmarkResult]
-runSizesBenchmark load cl qs =
+runSizesBenchmark :: LoadFunction PostingListMap
+                  -> Cl.Clustering DocId
+                  -> VU.Vector (Token, Token)
+                  -> CompFunc
+                  -> IO [BenchmarkResult]
+runSizesBenchmark load cl qs compFunc =
     do putInfo "Loading index..."
        let loadList t m v = return $! HM.insert t v m
        plm <- load loadList HM.empty
@@ -204,13 +226,16 @@ runSizesBenchmark load cl qs =
        let sizes = postingListSizes plm qs
        let !sizesSmall = VU.map (uncurry min) sizes
        let !sizesBig = VU.map (uncurry max) sizes
+       putInfo "Calculating normal complexities"
+       let !normalComp = VU.map (uncurry compFunc) sizes
        putInfo "Building complexity map..."
        let !csizes = force $ HM.map (clusterSizes cl) plm
        putInfo "Calculating complexities..."
        -- the first bang is important to enforce strict evaluation
-       let !(!intersect, !cluster) = VU.unzip $ VU.map (lookupComplexity csizes) qs
+       let !(!intersect, !cluster) = VU.unzip $ VU.map (lookupComplexity compFunc csizes) qs
        return [ genResultInt "size-small" sizesSmall
               , genResultInt "size-big" sizesBig
+              , genResultInt "normal-comp" normalComp
               , genResultInt "intersect-comp" intersect
               , genResultInt "cluster-comp" cluster]
 
@@ -238,15 +263,23 @@ data BenchmarkResult =
     , benchmarkData :: !BenchmarkData
     }
 
-runBenchmark :: FilePath -> Int -> VU.Vector Token -> Cl.Clustering DocId -> (DocId -> Bool) -> VU.Vector (Token, Token) -> IO [BenchmarkResult]
-runBenchmark fp runs ts cl useDocId qs =
-    do sizes <- runSizesBenchmark loadFunc cl qs
-       normal <- runNormalBenchmark runs loadFunc qs
-       relabeled <- runRelabeledBenchmark runs loadFunc cl qs
-       cluster <- runClusterBenchmark runs loadFunc ts cl qs
+runBenchmark :: FilePath
+             -> Int
+             -> VU.Vector Token
+             -> Cl.Clustering DocId
+             -> (DocId -> Bool)
+             -> VU.Vector (Token, Token)
+             -> CompFunc
+             -> IO [BenchmarkResult]
+runBenchmark fp runs ts cl useDocId qs compFunc =
+    do sizes <- runSizesBenchmark loadFunc cl qs compFunc
+       normal <- runMaybe $ runNormalBenchmark runs loadFunc qs
+       relabeled <- runMaybe $ runRelabeledBenchmark runs loadFunc cl qs
+       cluster <- runMaybe $ runClusterBenchmark runs loadFunc ts cl qs
        putInfo "Done Benchmarking..."
        return $ concat [sizes, normal, relabeled, cluster]
     where loadFunc = loadPostingLists fp ts useDocId
+          runMaybe a = if runs > 0 then a else return []
 
 benchmarkToLines :: [BenchmarkResult] -> [String]
 benchmarkToLines bench = header : datalines
@@ -273,6 +306,9 @@ main = do
     let !queryv = VU.fromList queries
     putInfo "Loading clustering..."
     !cl <- decodeFile $ clusterFile args
-    benchmark <- runBenchmark (indexFile args) (numRuns args) tokens cl (cl `Cl.contains`) queryv
+    let compFunc = if (useLogComp args)
+                      then logComp (2 * C.collectionSize coll)
+                      else min
+    benchmark <- runBenchmark (indexFile args) (numRuns args) tokens cl (cl `Cl.contains`) queryv compFunc
     mapM_ putStrLn $ benchmarkToLines benchmark
     putInfo "Done..."

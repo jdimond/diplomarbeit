@@ -11,7 +11,7 @@ module Search.IndexedSet
     , buildIndex
     , indexedSetFromList
     , lookup, lookupV, setSizes, allElems
-    , IndexedSetHandle, withIndexedSetFile, readSet, joinFiles
+    , IndexedSetHandle, withIndexedSetFile, readSet, joinFiles, enumerateIndexHandleKeys
     ) where
 
 import Prelude hiding (lookup)
@@ -173,6 +173,9 @@ withIndexedSetFile :: (Identifier t0, Identifier t1)
 withIndexedSetFile path action =
     IO.withBinaryFile path IO.ReadMode $ \handle ->
         indexedSetHandle handle >>= action
+
+enumerateIndexHandleKeys :: (Identifier t0) => IndexedSetHandle t0 t1 -> [t0]
+enumerateIndexHandleKeys (IndexedSetHandle _ offsets _) = map (boxId . fromIntegral) [0..VU.length offsets-2]
 
 readSet :: (Identifier t0, Identifier t1) => IndexedSetHandle t0 t1 -> t0 -> IO (VU.Vector t1)
 readSet (IndexedSetHandle handle offsets fileOffset) k =

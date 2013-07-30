@@ -8,6 +8,7 @@ module Search.Collection
     , loadDocCollection, loadTokenDoc, loadTokenDocs, loadDocMeta, loadTokenMap
     , tfCounter
     , collectionSize, enumerateDocIds, dictionarySize, documentLength
+    , maxDocId
     ) where
 
 import qualified System.IO  as IO
@@ -168,9 +169,11 @@ loadDocCollection base = do
 collectionSize :: DocCollection a -> Int
 collectionSize collection = VU.length $ containerOffsets collection
 
+maxDocId :: DocCollection a -> DocId
+maxDocId collection = DocId $ fromIntegral $ collectionSize collection - 1
+
 enumerateDocIds :: DocCollection a -> [DocId]
-enumerateDocIds collection = map (DocId . fromIntegral) [0..maxDocId]
-    where maxDocId = collectionSize collection - 1
+enumerateDocIds collection = map DocId [0..(unDocId $ maxDocId collection)]
 
 loadTokenMap :: DocCollection a -> IO D.TokenMap
 loadTokenMap coll = decodeFile dictFile

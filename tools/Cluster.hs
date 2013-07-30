@@ -4,14 +4,13 @@
 
 import Prelude hiding (iterate)
 
-import System.IO (stderr, hPutStrLn)
-
 import qualified System.Console.CmdArgs as A
 import System.Console.CmdArgs ((&=))
 
-import qualified System.Random.MWC as R
+import System.Random.MWC
 
 import Search.Common
+import Search.Util
 import qualified Search.Dictionary as D
 import qualified Search.Collection as C
 import Search.Processing (extractWords)
@@ -38,7 +37,6 @@ import Data.Ord (comparing)
 import Data.Maybe (catMaybes)
 
 import Control.Monad.Primitive
-import System.Random.MWC
 
 import Control.Monad
 import Control.Concurrent
@@ -80,16 +78,6 @@ fmfArgs = FMFArgs
     , docLimit = Nothing &= A.explicit &= A.name "doc-limit" &= A.help "cluster first [doc-limit] documents"
     , randomDocs = Nothing &= A.explicit &= A.name "random-docs" &= A.help "cluster [doc-limit] random documents"
     }
-
-shuffleV :: (PrimMonad m, VG.Vector v a) => Gen (PrimState m) -> v a -> m (v a)
-shuffleV g v =
-    do swaps <- VU.generateM l (\i -> uniformR (i,l) g)
-       return $ VG.modify (doSwaps swaps) v
-    where l = VG.length v -1
-          doSwaps swaps mv = VU.mapM_ (uncurry $ VGM.swap mv) $ VU.indexed swaps
-
-putInfo :: String -> IO ()
-putInfo = hPutStrLn stderr
 
 data TermProbabilities = TermProbabilities (VU.Vector Double) Double
 
@@ -267,7 +255,7 @@ fmfClustering :: (Identifier i, Show i, Show d, Show cc)
               -> [i]
               -> IO (Cl.Clustering i)
 fmfClustering conf mode nc elems =
-    do gen <- R.withSystemRandom (return :: (GenIO -> IO (GenIO)))
+    do gen <- withSystemRandom (return :: (GenIO -> IO (GenIO)))
        let !elemsV = V.fromList elems
        let numElems = V.length elemsV
        (nc', as) <- case mode of
@@ -363,7 +351,7 @@ main = do
                 (Just _, Just _) -> error "invalid configuration: use either doc-limit or random-docs"
                 (Just limit, Nothing) -> return $! VU.fromList $ take limit $ C.enumerateDocIds coll
                 (Nothing, Just rDocs) ->
-                    do gen <- R.withSystemRandom (return :: (GenIO -> IO (GenIO)))
+                    do gen <- withSystemRandom (return :: (GenIO -> IO (GenIO)))
                        let allDocIds = VU.fromList $ C.enumerateDocIds coll
                        shuffled <- shuffleV gen allDocIds
                        return $! VU.fromList $ L.sort $ VU.toList $ VU.take rDocs shuffled

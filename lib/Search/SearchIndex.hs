@@ -8,6 +8,7 @@ module Search.SearchIndex
     , buildSearchIndex
     , search, numDocsPerTerm
     , SearchIndexHandle, withSearchIndexFile, readPostingList, joinIndexes
+    , indexedTokens, handleIndexedTokens
     ) where
 
 import Control.Monad.Primitive
@@ -62,3 +63,9 @@ readPostingList = I.readSet
 
 joinIndexes :: [FilePath] -> FilePath -> IO ()
 joinIndexes = I.joinFiles
+
+indexedTokens :: SearchIndex -> [Token]
+indexedTokens = I.enumerateIndexKeys
+
+handleIndexedTokens :: SearchIndexHandle -> [Token]
+handleIndexedTokens = I.enumerateIndexHandleKeys

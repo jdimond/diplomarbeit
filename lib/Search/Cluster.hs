@@ -141,7 +141,7 @@ unsafeRemap cl = (VU.unsafeIndex m) . fromIntegral . unboxId
           clmap = mapping cl
           ids = sortByV (compare `on` clmap) elems
           m = runST $ fillRelabeling $ sortByV (compare `on` clmap) ids
-{- INLINE unsafeRemap -}
+{-# INLINE unsafeRemap #-}
 
 remapRange :: Identifier i => (Int, Int) -> [i] -> [(i,i)]
 remapRange (l,t) is
